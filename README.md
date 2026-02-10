@@ -17,12 +17,14 @@ This guide covers how to start and provision the Expensy application cluster in 
 ### Required Tools
 
 - **Docker & Docker Compose** (for local development)
+
   ```bash
   docker --version
   docker-compose --version
   ```
 
 - **kubectl** (for Kubernetes)
+
   ```bash
   kubectl version --client
   ```
@@ -59,13 +61,14 @@ Use Docker Compose for local development. This spins up all services in containe
 
 ### 1. Start the Cluster
 
-```bash
-docker-compose up --build
+```
+az aks create --resource-group rg-expensy-aks --name aks-expensy --node-count 1 --node-vm-size Standard_D2s_v3 --enable-managed-identity --generate-ssh-keys --location westeurope
 ```
 
 ### 2. Wait for Services
 
 All services should be healthy after ~30 seconds:
+
 - **Frontend**: http://localhost:3000
 - **Backend**: http://localhost:8706
 - **MongoDB**: localhost:27017 (root/example)
@@ -92,6 +95,7 @@ Run the frontend and backend services natively on your machine without Docker. U
 ### Prerequisites
 
 - **Node.js 18+** and **npm**
+
   ```bash
   node --version
   npm --version
@@ -106,12 +110,14 @@ Run the frontend and backend services natively on your machine without Docker. U
 ### 1. Install Dependencies
 
 **Backend:**
+
 ```bash
 cd expensy_backend
 npm install
 ```
 
 **Frontend:**
+
 ```bash
 cd expensy_frontend
 npm install
@@ -128,6 +134,7 @@ npm start
 Backend runs on: http://localhost:8706
 
 **Or use watch mode for development** (requires `ts-node-dev`):
+
 ```bash
 cd expensy_backend
 npx ts-node-dev --respawn src/server.ts
@@ -145,6 +152,7 @@ Frontend runs on: http://localhost:3000
 ### 4. Environment Variables
 
 **Backend** (`expensy_backend/.env` or set inline):
+
 ```bash
 PORT=8706
 DATABASE_URI=mongodb://root:example@localhost:27017/expensy?authSource=admin
@@ -154,6 +162,7 @@ REDIS_PASSWORD=someredispassword
 ```
 
 **Frontend** (set when running):
+
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8706
 ```
@@ -161,16 +170,19 @@ NEXT_PUBLIC_API_URL=http://localhost:8706
 ### 5. Stop Services
 
 Backend:
+
 ```bash
 Ctrl+C
 ```
 
 Frontend:
+
 ```bash
 Ctrl+C
 ```
 
 Stop databases:
+
 ```bash
 docker-compose down
 ```
@@ -184,6 +196,7 @@ Deploy the application to a Kubernetes cluster.
 ### Prerequisites
 
 1. **Kubernetes Cluster Running**
+
    ```bash
    kubectl cluster-info
    ```
@@ -226,6 +239,7 @@ Apply all Kubernetes manifests in order:
 ```
 
 This deploys:
+
 1. `expensy` namespace
 2. Secrets
 3. MongoDB with persistent storage
@@ -242,6 +256,7 @@ kubectl get pods -n expensy
 ```
 
 Expected output:
+
 ```
 NAME                        READY   STATUS    RESTARTS   AGE
 mongo-xxx                   1/1     Running   0          2m
@@ -259,30 +274,37 @@ kubectl get svc -n expensy
 ### 4. Access the Application
 
 **Port-Forward to Backend**
+
 ```bash
 kubectl port-forward -n expensy svc/expensy-backend 8706:8706
 ```
+
 Backend available at: http://localhost:8706
 
 **Port-Forward to Frontend**
+
 ```bash
 kubectl port-forward -n expensy svc/expensy-frontend 3000:3000
 ```
+
 Frontend available at: http://localhost:3000
 
 ### 5. View Logs
 
 Backend logs:
+
 ```bash
 kubectl logs -n expensy -f deployment/expensy-backend
 ```
 
 Frontend logs:
+
 ```bash
 kubectl logs -n expensy -f deployment/expensy-frontend
 ```
 
 MongoDB logs:
+
 ```bash
 kubectl logs -n expensy -f pod/mongo-xxx
 ```
@@ -317,16 +339,19 @@ We use a template + local file approach:
 ### Creating `secrets.yaml.local`
 
 1. Copy the template:
+
    ```bash
    cp k8s/secrets.yaml k8s/secrets.yaml.local
    ```
 
 2. Edit with actual values:
+
    ```bash
    nano k8s/secrets.yaml.local
    ```
 
 3. Replace placeholders:
+
    ```yaml
    stringData:
      mongo_user: your_actual_user
@@ -350,11 +375,13 @@ We use a template + local file approach:
 ### Pods Not Starting
 
 Check pod status and events:
+
 ```bash
 kubectl describe pod -n expensy <pod-name>
 ```
 
 Common issues:
+
 - **ImagePullBackOff**: Build images first or check registry access
 - **CrashLoopBackOff**: Check logs with `kubectl logs`
 - **Pending**: Check node resources or storage provisioning
@@ -362,11 +389,13 @@ Common issues:
 ### MongoDB Connection Issues
 
 Check if MongoDB is ready:
+
 ```bash
 kubectl exec -n expensy <mongo-pod> -- mongo -u root -p example --eval "db.adminCommand('ping')"
 ```
 
 Check MongoDB volume:
+
 ```bash
 kubectl get pvc -n expensy
 ```
@@ -374,11 +403,13 @@ kubectl get pvc -n expensy
 ### Backend Can't Connect to Database
 
 Verify environment variables:
+
 ```bash
 kubectl env pod/<backend-pod> -n expensy
 ```
 
 Check if MongoDB and Redis pods are running:
+
 ```bash
 kubectl get pods -n expensy
 ```
@@ -386,6 +417,7 @@ kubectl get pods -n expensy
 ### Port Forward Not Working
 
 Try a different port:
+
 ```bash
 kubectl port-forward -n expensy svc/expensy-backend 9000:8706
 ```
@@ -395,11 +427,13 @@ Then access at http://localhost:9000
 ### Can't Access Frontend/Backend Services
 
 Ensure services exist:
+
 ```bash
 kubectl get svc -n expensy
 ```
 
 Check service endpoints:
+
 ```bash
 kubectl get endpoints -n expensy
 ```
