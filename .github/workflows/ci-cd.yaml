@@ -98,12 +98,28 @@ jobs:
           cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
 
       - name: Deploy to Staging
+        env:
+          MONGO_USER: ${{ secrets.MONGO_USER }}
+          MONGO_PASS: ${{ secrets.MONGO_PASS }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          DATABASE_URI: ${{ secrets.DATABASE_URI }}
+          API_URL: ${{ secrets.API_URL }}
         run: |
+          # Delete existing secret to force update (secrets don't auto-reload in pods)
+          kubectl delete secret expensy-secrets -n expensy --ignore-not-found=true
+
+          # Create secrets.yaml with actual values
+          envsubst < k8s/secrets.yaml | kubectl apply -f - -n expensy
+
           # Update image tags in Kubernetes manifests
           sed -i "s|IMAGE_TAG|${{ github.sha }}|g" k8s/*.yaml
 
           # Apply Kubernetes manifests
           kubectl apply -f k8s/ -n expensy
+
+          # Force pod restart to pick up new secrets
+          kubectl rollout restart deployment/backend -n expensy
+          kubectl rollout restart deployment/frontend -n expensy
 
           # Wait for rollout to complete
           kubectl rollout status deployment/backend -n expensy --timeout=300s
@@ -142,12 +158,28 @@ jobs:
           cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
 
       - name: Deploy to Production
+        env:
+          MONGO_USER: ${{ secrets.MONGO_USER }}
+          MONGO_PASS: ${{ secrets.MONGO_PASS }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          DATABASE_URI: ${{ secrets.DATABASE_URI }}
+          API_URL: ${{ secrets.API_URL }}
         run: |
+          # Delete existing secret to force update (secrets don't auto-reload in pods)
+          kubectl delete secret expensy-secrets -n expensy --ignore-not-found=true
+
+          # Create secrets.yaml with actual values
+          envsubst < k8s/secrets.yaml | kubectl apply -f - -n expensy
+
           # Update image tags in Kubernetes manifests
           sed -i "s|IMAGE_TAG|${{ github.sha }}|g" k8s/*.yaml
 
           # Apply Kubernetes manifests
           kubectl apply -f k8s/ -n expensy
+
+          # Force pod restart to pick up new secrets
+          kubectl rollout restart deployment/backend -n expensy
+          kubectl rollout restart deployment/frontend -n expensy
 
           # Wait for rollout to complete
           kubectl rollout status deployment/backend -n expensy --timeout=300s
