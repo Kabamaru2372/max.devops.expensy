@@ -230,7 +230,36 @@ kubectl create secret generic expensy-secrets \
   -n expensy
 ```
 
-### 2. Provision the Cluster
+### 2. Install Ingress Controller
+
+The application uses an Ingress Controller for routing. Install it using Helm:
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace
+```
+
+Get the Ingress Controller IP address:
+
+```bash
+kubectl get svc -n ingress-nginx
+```
+
+Note the external IP or endpoint for later use.
+
+### 3. Configure API URL Environment Variables
+
+Use the Ingress Controller IP address for the `NEXT_PUBLIC_API_URL` and `API_URL` environment variables:
+
+- **`NEXT_PUBLIC_API_URL`**: `http://<INGRESS_IP>:<PORT>` (Frontend -> Backend communication)
+- **`API_URL`**: `http://<INGRESS_IP>:<PORT>` (Backend internal communication)
+
+Update these in your Kubernetes manifests (frontend.yaml and backend.yaml) or set them in the CI/CD pipeline secrets.
+
+### 4. Provision the Cluster
 
 Apply all Kubernetes manifests in order:
 
@@ -246,8 +275,9 @@ This deploys:
 4. Redis cache
 5. Backend service
 6. Frontend service
+7. Ingress rules
 
-### 3. Verify Deployment
+### 5. Verify Deployment
 
 Check pod status:
 
@@ -271,7 +301,7 @@ Check services:
 kubectl get svc -n expensy
 ```
 
-### 4. Access the Application
+### 6. Access the Application
 
 **Port-Forward to Backend**
 
@@ -289,7 +319,7 @@ kubectl port-forward -n expensy svc/expensy-frontend 3000:3000
 
 Frontend available at: http://localhost:3000
 
-### 5. View Logs
+### 7. View Logs
 
 Backend logs:
 
@@ -309,7 +339,7 @@ MongoDB logs:
 kubectl logs -n expensy -f pod/mongo-xxx
 ```
 
-### 6. Clean Up
+### 8. Clean Up
 
 Delete all resources:
 
@@ -335,6 +365,17 @@ We use a template + local file approach:
 
 - **`k8s/secrets.yaml`** (committed): Template with placeholders
 - **`k8s/secrets.yaml.local`** (gitignored): Your actual secrets
+
+### GitHub Repository Secrets
+
+The following secrets must be declared in your GitHub repository settings (Settings > Secrets and variables > Actions):
+
+- **`MONGO_USER`**: MongoDB username
+- **`MONGO_PASS`**: MongoDB password
+- **`REDIS_PASSWORD`**: Redis password
+- **`DATABASE_URI`**: Complete MongoDB connection string
+
+These secrets are used in the CI/CD pipeline (`.github/workflows/`) to provision the cluster and configure services securely.
 
 ### Creating `secrets.yaml.local`
 
@@ -471,6 +512,10 @@ kubectl port-forward -n expensy svc/<svc-name> <local>:<remote>  # Port forward
 ./apply_all.sh                     # Deploy everything
 ./delete_all.sh                    # Clean up everything
 kubectl delete namespace expensy   # Delete namespace
+
+# Azure Kubernetes Service (AKS)
+az aks create --resource-group rg-expensy-aks --name aks-expensy --node-count 1 --node-vm-size Standard_D2s_v3 --enable-managed-identity --generate-ssh-keys --location westeurope  # Create AKS cluster
+az aks delete --resource-group rg-expensy-aks --name aks-expensy  # Delete AKS cluster
 ```
 
 ---
